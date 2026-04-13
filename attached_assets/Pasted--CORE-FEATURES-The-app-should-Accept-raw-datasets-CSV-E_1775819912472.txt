@@ -1,0 +1,168 @@
+🧠 CORE FEATURES
+
+The app should:
+
+Accept raw datasets (CSV, Excel)
+Automatically clean and preprocess data
+Perform exploratory data analysis (EDA)
+Generate interactive visualizations
+Provide AI-generated insights
+Allow custom chart creation
+Include an ML prediction module
+Generate a downloadable professional PowerPoint presentation automatically
+⚙️ TECH STACK
+Frontend: Streamlit
+Backend: Python
+Libraries:
+pandas, numpy
+matplotlib, seaborn, plotly
+scikit-learn
+pptx (python-pptx for presentation generation)
+scipy (optional)
+joblib (for saving models)
+📥 DATA INPUT
+Upload CSV/XLSX
+Display:
+dataset preview
+shape
+column types
+missing values
+🧹 DATA CLEANING MODULE
+
+Automatically:
+
+Remove duplicates
+Handle missing values:
+numeric → mean/median
+categorical → mode
+Convert data types
+Detect & remove outliers (IQR method)
+
+Also:
+
+Provide user controls (checkbox toggles)
+📊 EDA MODULE
+Summary stats
+Correlation matrix
+Feature distributions
+Heatmaps
+Pairplots (optional)
+📈 VISUALIZATION MODULE
+
+Auto charts:
+
+Histogram
+Bar chart
+Scatter plot
+Box plot
+Heatmap
+
+Custom builder:
+
+Select X, Y
+Chart type:
+line
+bar
+scatter
+pie
+box
+
+Use Plotly for interactivity.
+
+🤖 ML PREDICTION MODULE
+
+Create a separate "Prediction" tab.
+
+Features:
+User selects:
+Target column
+Feature columns
+Automatically detect problem type:
+Classification → Logistic Regression / Random Forest
+Regression → Linear Regression / Random Forest Regressor
+Pipeline:
+Train-test split
+Model training
+Evaluation:
+Accuracy (classification)
+RMSE / R² (regression)
+Output:
+Show model performance
+Feature importance chart
+Allow user input for prediction
+Show predicted result
+💡 INSIGHTS ENGINE
+
+Auto-generate insights like:
+
+correlations
+trends
+skewness
+anomalies
+
+Display in simple bullet points.
+
+📊 DOWNLOADABLE POWERPOINT GENERATION (IMPORTANT)
+
+Add a button: "Download Presentation"
+
+When clicked:
+Generate a professional PPT using python-pptx with slides:
+
+Title Slide (Dataset name)
+Dataset Overview
+Data Cleaning Summary
+Key Insights
+Visualizations (charts images)
+ML Results (if used)
+Conclusion
+
+Requirements:
+
+Clean professional layout
+Add charts as images
+Use proper titles and bullet points
+
+Provide download link for PPT file.
+
+🎛️ UI STRUCTURE
+
+Sidebar controls + Tabs:
+
+Data Preview
+Data Cleaning
+Analysis
+Visualization
+Prediction
+Insights
+Report Download
+📤 OUTPUT FEATURES
+Download cleaned dataset
+Download charts
+Download PPT report
+🧩 CODE REQUIREMENTS
+Modular functions:
+cleaning.py
+visualization.py
+ml_model.py
+report_generator.py
+Well-structured app.py
+Error handling
+Works for any dataset
+⭐ BONUS (IF POSSIBLE)
+Save trained model
+Auto feature selection
+Dark mode
+Caching for performance
+🎯 FINAL GOAL
+
+Return FULL WORKING CODE that runs with:
+
+streamlit run app.py
+
+Ensure:
+
+clean UI
+smooth workflow
+reusable components
+production-level quality
