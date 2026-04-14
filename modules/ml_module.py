@@ -25,6 +25,10 @@ def _cat_cols(df):
     return df.select_dtypes(include=["object", "string", "category"]).columns.tolist()
 
 
+def _datetime_cols(df):
+    return [c for c in df.columns if np.issubdtype(df[c].dtype, np.datetime64)]
+
+
 @st.cache_data(show_spinner=False)
 def _auto_select_features(serialized_df, target_col, n=10):
     df = pd.read_json(io.StringIO(serialized_df))
@@ -138,6 +142,10 @@ def _run_training(df, target_col, feature_cols, is_cls, model_choice, test_pct, 
         le = LabelEncoder()
         X[col] = le.fit_transform(X[col].astype(str))
         encoders[col] = le
+
+    # convert datetime features to numeric timestamps
+    for col in _datetime_cols(X):
+        X[col] = X[col].astype('int64') / 1e9
 
     X = X.astype(float)
 

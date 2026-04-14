@@ -121,10 +121,14 @@ def auto_visualize(df):
     if len(numeric_cols) >= 2:
         st.markdown("#### Scatter Matrix")
         scatter_cols = numeric_cols[:4]
-        sample = df[scatter_cols].sample(min(600, len(df)), random_state=42) if len(df) > 600 else df[scatter_cols]
         cat_color = next((c for c in cat_cols if df[c].nunique() <= 10), None)
+        plot_cols = scatter_cols + ([cat_color] if cat_color else [])
+        sample = df[plot_cols].sample(min(600, len(df)), random_state=42) if len(df) > 600 else df[plot_cols]
+
+        # Ensure color column exists in sample before passing to Plotly
+        color_arg = cat_color if cat_color in sample.columns else None
         fig = px.scatter_matrix(
-            sample, dimensions=scatter_cols, color=cat_color,
+            sample, dimensions=scatter_cols, color=color_arg,
             title=f"Scatter Matrix — {len(scatter_cols)} columns (n={len(sample):,})",
             template="plotly_dark"
         )
