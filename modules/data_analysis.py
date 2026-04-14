@@ -33,7 +33,19 @@ def show_correlation_analysis(df):
         st.warning("Need at least 2 numeric columns for correlation analysis.")
         return
 
-    corr = df[numeric_cols].corr().round(3)
+    # Limit columns for performance on large datasets
+    MAX_CORR_COLS = 20
+    if len(numeric_cols) > MAX_CORR_COLS:
+        st.warning(f"⚠️ Too many numeric columns ({len(numeric_cols)}). Showing correlation for first {MAX_CORR_COLS} columns only.")
+        numeric_cols = numeric_cols[:MAX_CORR_COLS]
+
+    # For very large datasets, sample rows for correlation
+    if len(df) > 50000:
+        st.info("📊 Large dataset detected. Computing correlation on sample for performance.")
+        sample_df = df.sample(min(50000, len(df)), random_state=42)
+        corr = sample_df[numeric_cols].corr().round(3)
+    else:
+        corr = df[numeric_cols].corr().round(3)
 
     fig = px.imshow(
         corr,

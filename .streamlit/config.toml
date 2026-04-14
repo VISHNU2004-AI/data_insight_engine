@@ -3,6 +3,9 @@ headless = true
 address = "0.0.0.0"
 enableCORS = false
 enableXsrfProtection = false
+maxUploadSize = 50
+maxMessageSize = 100
+enableWebsocketCompression = true
 
 [browser]
 gatherUsageStats = false

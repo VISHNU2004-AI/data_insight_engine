@@ -16,8 +16,21 @@ def generate_insights(df):
     numeric_cols = _num_cols(df)
     cat_cols = _cat_cols(df)
 
-    if len(numeric_cols) >= 2:
-        corr = df[numeric_cols].corr()
+    # Limit correlation analysis for performance
+    MAX_CORR_COLS = 15
+    if len(numeric_cols) > MAX_CORR_COLS:
+        corr_cols = numeric_cols[:MAX_CORR_COLS]
+    else:
+        corr_cols = numeric_cols
+
+    if len(corr_cols) >= 2:
+        # Sample for large datasets
+        if len(df) > 50000:
+            sample_df = df.sample(min(50000, len(df)), random_state=42)
+            corr = sample_df[corr_cols].corr()
+        else:
+            corr = df[corr_cols].corr()
+
         for i in range(len(corr.columns)):
             for j in range(i + 1, len(corr.columns)):
                 val = corr.iloc[i, j]
