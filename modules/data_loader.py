@@ -4,9 +4,9 @@ import numpy as np
 import io
 
 # File size limits (in MB)
-MAX_FILE_SIZE_MB = 50  # Reasonable limit for web app
-MAX_ROWS_PREVIEW = 100000  # Max rows to load initially
-CHUNK_SIZE = 10000  # For chunked reading
+MAX_FILE_SIZE_MB = 500  # Increased for large datasets
+MAX_ROWS_PREVIEW = None  # Load all rows, no limit
+CHUNK_SIZE = 50000  # Optimized chunk size for large files
 
 
 def load_data(uploaded_file):
@@ -53,40 +53,37 @@ def load_data(uploaded_file):
 
 
 def _load_csv_smart(uploaded_file, file_size_mb):
-    """Smart CSV loading with chunking for large files"""
+    """Smart CSV loading with chunking and memory optimization"""
     try:
-        # For very large files, try chunked reading first to estimate size
-        if file_size_mb > 20:
-            # Read first chunk to check structure
-            sample_df = pd.read_csv(uploaded_file, nrows=1000)
-            total_rows = _estimate_csv_rows(uploaded_file)
-
-            if total_rows > MAX_ROWS_PREVIEW:
-                st.warning(f"📊 Large dataset detected ({total_rows:,} rows). Loading first {MAX_ROWS_PREVIEW:,} rows for preview.")
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-
-                # Load in chunks
-                chunks = []
-                chunk_count = 0
-                for chunk in pd.read_csv(uploaded_file, chunksize=CHUNK_SIZE):
-                    chunks.append(chunk)
-                    chunk_count += 1
-                    progress = min(chunk_count * CHUNK_SIZE / MAX_ROWS_PREVIEW, 1.0)
-                    progress_bar.progress(progress)
-                    status_text.text(f"Loading chunk {chunk_count}...")
-
-                    if len(pd.concat(chunks)) >= MAX_ROWS_PREVIEW:
-                        break
-
-                progress_bar.empty()
-                status_text.empty()
-                df = pd.concat(chunks).head(MAX_ROWS_PREVIEW)
-            else:
-                df = pd.read_csv(uploaded_file)
-        else:
-            df = pd.read_csv(uploaded_file)
-
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        # Load entire file in chunks and concatenate
+        chunks = []
+        chunk_count = 0
+        
+        for chunk in pd.read_csv(uploaded_file, chunksize=CHUNK_SIZE):
+            # Optimize data types on each chunk
+            chunk = _optimize_dtypes(chunk)
+            chunks.append(chunk)
+            chunk_count += 1
+            progress = min((chunk_count * CHUNK_SIZE) / (file_size_mb * 1024 * 100), 1.0)
+            progress_bar.progress(min(progress, 0.99))
+            status_text.text(f"Loading chunk {chunk_count}... ({len(pd.concat(chunks)):,} rows)")
+        
+        progress_bar.progress(1.0)
+        
+        if not chunks:
+            st.error("File is empty!")
+            return None
+        
+        df = pd.concat(chunks, ignore_index=True)
+        status_text.empty()
+        progress_bar.empty()
+        
+        # Final type optimization
+        df = _optimize_dtypes(df)
+        
         return df
 
     except Exception as e:
@@ -97,16 +94,12 @@ def _load_csv_smart(uploaded_file, file_size_mb):
 def _load_excel_smart(uploaded_file, file_size_mb):
     """Smart Excel loading with memory optimization"""
     try:
-        # Excel files are often smaller but can still be memory intensive
         if file_size_mb > 30:
-            st.warning("📊 Large Excel file detected. Loading may take time...")
+            st.info("📊 Large Excel file detected. Loading with optimization...")
 
-        df = pd.read_excel(uploaded_file)
-
-        # If too many rows, take a sample
-        if len(df) > MAX_ROWS_PREVIEW:
-            st.warning(f"📊 Large dataset ({len(df):,} rows). Showing first {MAX_ROWS_PREVIEW:,} rows.")
-            df = df.head(MAX_ROWS_PREVIEW)
+        with st.spinner("Loading Excel file..."):
+            df = pd.read_excel(uploaded_file)
+            df = _optimize_dtypes(df)
 
         return df
 
@@ -115,12 +108,36 @@ def _load_excel_smart(uploaded_file, file_size_mb):
         return None
 
 
+def _optimize_dtypes(df):
+    """Optimize data types to reduce memory usage"""
+    for col in df.columns:
+        col_type = df[col].dtype
+        
+        # Convert object to string for Arrow compatibility
+        if col_type == 'object':
+            df[col] = df[col].astype(str)
+        
+        # Downcast integers to smaller types
+        elif col_type in ['int64']:
+            max_val = df[col].max()
+            min_val = df[col].min()
+            if max_val < 2147483647 and min_val > -2147483648:
+                df[col] = df[col].astype('int32')
+            elif max_val < 32767 and min_val > -32768:
+                df[col] = df[col].astype('int16')
+        
+        # Downcast floats
+        elif col_type == 'float64':
+            df[col] = df[col].astype('float32')
+    
+    return df
+
+
 def _estimate_csv_rows(uploaded_file):
     """Estimate total rows in CSV without loading fully"""
     try:
         content = uploaded_file.getvalue().decode('utf-8', errors='ignore')
         lines = content.split('\n')
-        # Subtract header row
         return max(0, len(lines) - 1)
     except:
         return 0

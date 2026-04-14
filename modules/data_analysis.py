@@ -13,16 +13,26 @@ def _cat_cols(df):
     return df.select_dtypes(include=["object", "string", "category"]).columns.tolist()
 
 
+def _smart_sample(df, max_rows=100000):
+    """Smart sampling for large datasets"""
+    if len(df) > max_rows:
+        return df.sample(n=max_rows, random_state=42)
+    return df
+
+
 def show_summary_statistics(df):
     st.subheader("Summary Statistics")
     numeric_cols = _num_cols(df)
     if not numeric_cols:
         st.warning("No numeric columns found.")
         return
-    numeric_df = df[numeric_cols]
-    stats = numeric_df.describe().round(4)
-    stats.loc["skewness"] = numeric_df.skew().round(4)
-    stats.loc["kurtosis"] = numeric_df.kurtosis().round(4)
+    
+    # For large datasets, compute on sample
+    compute_df = _smart_sample(df, 500000)[numeric_cols]
+    
+    stats = compute_df.describe().round(4)
+    stats.loc["skewness"] = compute_df.skew().round(4)
+    stats.loc["kurtosis"] = compute_df.kurtosis().round(4)
     st.dataframe(stats, width="stretch")
 
 
@@ -33,19 +43,20 @@ def show_correlation_analysis(df):
         st.warning("Need at least 2 numeric columns for correlation analysis.")
         return
 
-    # Limit columns for performance on large datasets
     MAX_CORR_COLS = 20
     if len(numeric_cols) > MAX_CORR_COLS:
-        st.warning(f"⚠️ Too many numeric columns ({len(numeric_cols)}). Showing correlation for first {MAX_CORR_COLS} columns only.")
+        st.warning(f"⚠️ Showing correlation for first {MAX_CORR_COLS} columns only.")
         numeric_cols = numeric_cols[:MAX_CORR_COLS]
 
-    # For very large datasets, sample rows for correlation
-    if len(df) > 50000:
-        st.info("📊 Large dataset detected. Computing correlation on sample for performance.")
-        sample_df = df.sample(min(50000, len(df)), random_state=42)
-        corr = sample_df[numeric_cols].corr().round(3)
+    # Smart sampling for performance
+    sample_size = min(200000, len(df))
+    if len(df) > sample_size:
+        st.info(f"📊 Computing correlation on {sample_size:,} sampled rows for speed.")
+        sample_df = df.sample(n=sample_size, random_state=42)
     else:
-        corr = df[numeric_cols].corr().round(3)
+        sample_df = df
+    
+    corr = sample_df[numeric_cols].corr().round(3)
 
     fig = px.imshow(
         corr,
@@ -98,11 +109,17 @@ def show_distributions(df):
         selected_num = st.selectbox("Select numeric column", numeric_cols, key="dist_num")
         col_data = df[selected_num].dropna()
 
+        # Sample for histogram if too many rows
+        plot_data = df[[selected_num]].dropna()
+        if len(plot_data) > 100000:
+            plot_data = plot_data.sample(n=100000, random_state=42)
+
         fig = px.histogram(
-            df, x=selected_num, marginal="box",
-            title=f"Distribution of {selected_num}",
+            plot_data, x=selected_num, marginal="box",
+            title=f"Distribution of {selected_num} ({len(plot_data):,} rows)",
             template="plotly_dark",
-            color_discrete_sequence=["#4F8BF9"]
+            color_discrete_sequence=["#4F8BF9"],
+            nbins=50
         )
         fig.update_layout(height=420)
         st.plotly_chart(fig, width="stretch")
@@ -156,8 +173,15 @@ def show_trend_analysis(df):
     with col3:
         color_col = st.selectbox("Color by (optional)", [None] + cat_cols, key="trend_color")
 
+    # Smart sampling for scatter plot
+    cols_to_use = [x_col, y_col] + ([color_col] if color_col else [])
+    plot_data = df[cols_to_use].dropna()
+    
+    if len(plot_data) > 50000:
+        st.caption(f"📊 Showing {50000:,} sampled points out of {len(plot_data):,} total")
+        plot_data = plot_data.sample(n=50000, random_state=42)
+    
     valid_color = color_col if (color_col and df[color_col].nunique() <= 20) else None
-    plot_data = df[[x_col, y_col] + ([valid_color] if valid_color else [])].dropna()
 
     if len(plot_data) < 2:
         st.warning("Not enough non-null data points to plot.")
@@ -166,9 +190,9 @@ def show_trend_analysis(df):
     fig = px.scatter(
         plot_data, x=x_col, y=y_col,
         color=valid_color,
-        title=f"{x_col} vs {y_col}",
+        title=f"{x_col} vs {y_col} ({len(plot_data):,} points)",
         template="plotly_dark",
-        opacity=0.75
+        opacity=0.6
     )
 
     try:

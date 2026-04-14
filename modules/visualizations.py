@@ -49,15 +49,22 @@ def auto_visualize(df):
         st.markdown("#### Histograms")
         display = numeric_cols[:6]
         ncols = min(3, len(display))
+        
+        # Sample for large datasets
+        hist_data = df[[d for d in display]].dropna()
+        if len(hist_data) > 50000:
+            hist_data = hist_data.sample(n=50000, random_state=42)
+        
         for i in range(0, len(display), ncols):
             row = st.columns(ncols)
             for j, col_name in enumerate(display[i:i + ncols]):
                 with row[j]:
                     fig = px.histogram(
-                        df, x=col_name, marginal="box",
+                        hist_data, x=col_name, marginal="box",
                         title=col_name,
                         template="plotly_dark",
-                        color_discrete_sequence=["#4F8BF9"]
+                        color_discrete_sequence=["#4F8BF9"],
+                        nbins=40
                     )
                     fig.update_layout(height=300, showlegend=False,
                                       margin=dict(t=45, b=20, l=20, r=20))
@@ -89,7 +96,14 @@ def auto_visualize(df):
     # ── Correlation Heatmap ───────────────────────────────────────────────────
     if len(numeric_cols) >= 2:
         st.markdown("#### Correlation Heatmap")
-        corr = df[numeric_cols].corr()
+        corr_cols = numeric_cols[:20]  # Limit to first 20
+        
+        # Sample for correlation computation on large datasets
+        corr_data = df[corr_cols].dropna()
+        if len(corr_data) > 200000:
+            corr_data = corr_data.sample(n=200000, random_state=42)
+        
+        corr = corr_data.corr()
         fig = px.imshow(
             corr, text_auto=".2f",
             color_continuous_scale="RdBu_r",
@@ -107,11 +121,11 @@ def auto_visualize(df):
     if len(numeric_cols) >= 2:
         st.markdown("#### Scatter Matrix")
         scatter_cols = numeric_cols[:4]
-        sample = df.sample(min(600, len(df)), random_state=42) if len(df) > 600 else df
+        sample = df[scatter_cols].sample(min(600, len(df)), random_state=42) if len(df) > 600 else df[scatter_cols]
         cat_color = next((c for c in cat_cols if df[c].nunique() <= 10), None)
         fig = px.scatter_matrix(
             sample, dimensions=scatter_cols, color=cat_color,
-            title=f"Scatter Matrix — {len(scatter_cols)} columns",
+            title=f"Scatter Matrix — {len(scatter_cols)} columns (n={len(sample):,})",
             template="plotly_dark"
         )
         fig.update_layout(height=580)
@@ -123,10 +137,17 @@ def auto_visualize(df):
     if numeric_cols:
         st.markdown("#### Box Plots")
         fig = go.Figure()
-        for col_name in numeric_cols[:8]:
+        box_cols = numeric_cols[:8]
+        
+        # Sample for box plots
+        box_data = df[box_cols].dropna()
+        if len(box_data) > 50000:
+            box_data = box_data.sample(n=50000, random_state=42)
+        
+        for col_name in box_cols:
             fig.add_trace(go.Box(
-                y=df[col_name].dropna(), name=col_name,
-                boxpoints="outliers", marker_size=3
+                y=box_data[col_name], name=col_name,
+                boxpoints="outliers", marker_size=2
             ))
         fig.update_layout(
             title="Box Plots — Numeric Columns",

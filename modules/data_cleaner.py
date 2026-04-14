@@ -74,25 +74,40 @@ def remove_outliers(df, columns):
 def clean_data_auto(df):
     log = []
 
+    # For large datasets, show progress
+    if len(df) > 100000:
+        st.info(f"🔄 Cleaning {len(df):,} rows... This may take a moment.")
+
+    # Remove duplicates efficiently
     before = len(df)
-    df = df.drop_duplicates()
+    df = df.drop_duplicates(subset=None, keep='first')
     dup_removed = before - len(df)
     if dup_removed > 0:
         log.append(f"Removed {dup_removed} duplicate rows.")
 
-    for col in _num_cols(df):
+    # Clean numeric columns
+    numeric_cols = _num_cols(df)
+    for col in numeric_cols:
         null_count = int(df[col].isnull().sum())
         if null_count > 0:
-            df[col] = df[col].fillna(df[col].median())
+            # Use median for large datasets (faster)
+            median_val = df[col].median()
+            df[col] = df[col].fillna(median_val)
             log.append(f"Filled {null_count} missing values in '{col}' with median.")
 
-    for col in _cat_cols(df):
+    # Clean categorical columns
+    cat_cols = _cat_cols(df)
+    for col in cat_cols:
         null_count = int(df[col].isnull().sum())
         if null_count > 0:
             mode_val = df[col].mode()
             if len(mode_val) > 0:
                 df[col] = df[col].fillna(mode_val[0])
-                log.append(f"Filled {null_count} missing values in '{col}' with mode ('{mode_val[0]}').")
+                log.append(f"Filled {null_count} missing values in '{col}' with mode.")
+        
+        # Convert to string for Arrow compatibility
+        if df[col].dtype == 'object':
+            df[col] = df[col].astype(str)
 
     if not log:
         log.append("Dataset is already clean — no issues found.")
