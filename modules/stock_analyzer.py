@@ -8,7 +8,6 @@ import io
 import streamlit as st
 import pandas as pd
 import numpy as np
-import yfinance as yf
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
 import plotly.express as px
@@ -16,6 +15,13 @@ from typing import Dict, Optional, Tuple
 import warnings
 
 warnings.filterwarnings('ignore')
+
+try:
+    import yfinance as yf
+    YFINANCE_AVAILABLE = True
+except ImportError:
+    YFINANCE_AVAILABLE = False
+    yf = None
 
 
 def show_investor_profile_modal() -> Optional[Dict]:
@@ -259,6 +265,14 @@ def create_rsi_chart(history: pd.DataFrame, ticker: str) -> go.Figure:
 def show_stock_analyzer():
     """Main stock analyzer UI."""
     st.markdown("## 📈 Stock & Investment Analyzer")
+    
+    if not YFINANCE_AVAILABLE:
+        st.error(
+            "🔧 **Configuration Issue**: The yfinance library is not installed. "
+            "The Stock Analyzer requires yfinance to fetch financial data. "
+            "Please ensure all dependencies are properly installed (pip install -r requirements.txt)."
+        )
+        st.stop()
     
     st.info(
         "⚠️ **DISCLAIMER**: This report is for informational purposes only and does NOT constitute investment advice. "
