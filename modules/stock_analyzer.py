@@ -5,6 +5,8 @@ Generates professional PDF research reports with disclaimers.
 """
 
 import io
+import sys
+import subprocess
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -22,6 +24,14 @@ try:
 except ImportError:
     YFINANCE_AVAILABLE = False
     yf = None
+
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "yfinance"])
+        import yfinance as yf
+        YFINANCE_AVAILABLE = True
+    except Exception:
+        YFINANCE_AVAILABLE = False
+        yf = None
 
 
 def show_investor_profile_modal() -> Optional[Dict]:
